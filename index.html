@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中二數學：畢氏定理挑戰</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { color: #2c3e50; font-size: 28px; margin-bottom: 10px; }
+        .formula { font-size: 20px; color: #7f8c8d; margin-bottom: 20px; font-weight: bold; }
+        .status-bar { display: flex; justify-content: space-between; font-size: 18px; margin-bottom: 20px; color: #34495e; font-weight: bold; }
+        #question-text { font-size: 22px; margin-bottom: 25px; color: #2980b9; font-weight: bold; min-height: 60px; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .opt-btn {
+            background-color: #ecf0f1;
+            border: 2px solid #bdc3c7;
+            padding: 15px;
+            font-size: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        .opt-btn:hover { background-color: #d5dbdb; }
+        .opt-btn:disabled { cursor: not-allowed; opacity: 0.8; }
+        .opt-btn.correct { background-color: #2ecc71; color: white; border-color: #27ae60; }
+        .opt-btn.wrong { background-color: #e74c3c; color: white; border-color: #c0392b; }
+        #feedback-msg { font-size: 20px; font-weight: bold; height: 30px; margin-bottom: 15px; }
+        .msg-correct { color: #27ae60; }
+        .msg-wrong { color: #c0392b; }
+        #next-btn, #restart-btn {
+            background-color: #3498db; color: white; border: none; padding: 12px 25px;
+            font-size: 18px; border-radius: 8px; cursor: pointer; display: none; margin: 0 auto;
+        }
+        #next-btn:hover, #restart-btn:hover { background-color: #2980b9; }
+        #result-screen { display: none; }
+        .final-score { font-size: 32px; color: #e67e22; margin: 20px 0; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="game-screen">
+        <h1>📐 畢氏定理挑戰賽</h1>
+        <div class="formula">a&sup2; + b&sup2; = c&sup2;</div>
+        
+        <div class="status-bar">
+            <span>題目: <span id="q-number">1</span>/6</span>
+            <span>分數: <span id="score">0</span></span>
+        </div>
+
+        <div id="question-text">題目載入中...</div>
+        
+        <div class="btn-grid" id="options-container">
+            </div>
+
+        <div id="feedback-msg"></div>
+        <button id="next-btn" onclick="goToNextQuestion()">下一題 ➡️</button>
+    </div>
+
+    <div id="result-screen">
+        <h1>🎉 挑戰完成！</h1>
+        <div class="final-score">總分：<span id="final-score">0</span> / 6</div>
+        <p style="font-size: 18px; color: #7f8c8d; margin-bottom: 30px;">做得好！記住畢氏定理只適用於直角三角形呀！</p>
+        <button id="restart-btn" style="display: block;" onclick="location.reload()">🔄 再玩一次</button>
+    </div>
+</div>
+
+<script>
+    // 題庫設計
+    const questions = [
+        { q: '已知直角邊 a = 3, b = 4，求斜邊 c = ?', ans: 5, options: [7, 5, 25, 12] },
+        { q: '已知直角邊 a = 6, b = 8，求斜邊 c = ?', ans: 10, options: [14, 100, 10, 48] },
+        { q: '已知直角邊 a = 5, b = 12，求斜邊 c = ?', ans: 13, options: [17, 13, 169, 60] },
+        { q: '已知斜邊 c = 25, 直角邊 a = 7，求另一邊 b = ?', ans: 24, options: [18, 24, 625, 32] },
+        { q: '已知斜邊 c = 15, 直角邊 b = 9，求另一邊 a = ?', ans: 12, options: [12, 6, 24, 144] },
+        { q: '已知斜邊 c = 10, 直角邊 a = 8，求另一邊 b = ?', ans: 6, options: [2, 36, 6, 18] }
+    ];
+
+    let currentIndex = 0;
+    let currentScore = 0;
+
+    function renderQuestion() {
+        const currentQ = questions[currentIndex];
+        
+        // 更新狀態列
+        document.getElementById('q-number').textContent = currentIndex + 1;
+        document.getElementById('question-text').textContent = currentQ.q;
+        document.getElementById('feedback-msg').textContent = '';
+        document.getElementById('next-btn').style.display = 'none';
+
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = '';
+
+        // 簡單洗牌演算法 (Fisher-Yates) 確保選項隨機
+        let shuffled = currentQ.options.slice();
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        // 生成按鈕
+        shuffled.forEach(optionValue => {
+            const btn = document.createElement('button');
+            btn.className = 'opt-btn';
+            btn.textContent = optionValue;
+            btn.onclick = function() { checkAnswer(this, optionValue, currentQ.ans); };
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(clickedBtn, selectedValue, correctValue) {
+        // 鎖定所有按鈕防止重複點擊
+        const allBtns = document.querySelectorAll('.opt-btn');
+        allBtns.forEach(btn => {
+            btn.disabled = true;
+            // 順便標示出正確答案
+            if(parseInt(btn.textContent) === correctValue) {
+                btn.classList.add('correct');
+            }
+        });
+
+        const feedback = document.getElementById('feedback-msg');
+        
+        if (selectedValue === correctValue) {
+            feedback.textContent = '✅ 答對了！';
+            feedback.className = 'msg-correct';
+            currentScore++;
+            document.getElementById('score').textContent = currentScore;
+        } else {
+            feedback.textContent = `❌ 答錯了！正確答案是 ${correctValue}`;
+            feedback.className = 'msg-wrong';
+            clickedBtn.classList.add('wrong');
+        }
+
+        // 顯示下一題按鈕
+        document.getElementById('next-btn').style.display = 'block';
+    }
+
+    function goToNextQuestion() {
+        currentIndex++;
+        if (currentIndex < questions.length) {
+            renderQuestion();
+        } else {
+            // 顯示結果畫面
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'block';
+            document.getElementById('final-score').textContent = currentScore;
+        }
+    }
+
+    // 確保網頁載入完成後才執行
+    document.addEventListener("DOMContentLoaded", function() {
+        renderQuestion();
+    });
+</script>
+
+</body>
+</html>
